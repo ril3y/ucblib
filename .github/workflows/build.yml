@@ -13,25 +13,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 8
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '8'
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-29"
+
       - name: Compile library
         run: |
           ANDROID_JAR="$ANDROID_HOME/platforms/android-29/android.jar"
-          if [ ! -f "$ANDROID_JAR" ]; then
-            sdkmanager "platforms;android-29"
-            ANDROID_JAR="$ANDROID_HOME/platforms/android-29/android.jar"
-          fi
           mkdir -p build/classes
-          javac -source 1.8 -target 1.8 \
-            -bootclasspath "$ANDROID_JAR" \
+          javac --release 8 \
+            -classpath "$ANDROID_JAR" \
             -d build/classes \
             java/io/battlewithbytes/ucb/*.java
           cd build/classes
@@ -41,9 +40,8 @@ jobs:
         run: |
           ANDROID_JAR="$ANDROID_HOME/platforms/android-29/android.jar"
           mkdir -p build/test
-          javac -source 1.8 -target 1.8 \
-            -bootclasspath "$ANDROID_JAR" \
-            -classpath build/ucblib.jar \
+          javac --release 8 \
+            -classpath "build/ucblib.jar:$ANDROID_JAR" \
             -d build/test \
             test/UcbFrameTest.java
           java -classpath "build/ucblib.jar:build/test" UcbFrameTest
@@ -63,24 +61,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 8
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '8'
+          java-version: '17'
           distribution: 'temurin'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android platform
+        run: sdkmanager "platforms;android-29"
+
       - name: Build JAR
         run: |
           ANDROID_JAR="$ANDROID_HOME/platforms/android-29/android.jar"
-          if [ ! -f "$ANDROID_JAR" ]; then
-            sdkmanager "platforms;android-29"
-          fi
           mkdir -p build/classes
-          javac -source 1.8 -target 1.8 \
-            -bootclasspath "$ANDROID_JAR" \
+          javac --release 8 \
+            -classpath "$ANDROID_JAR" \
             -d build/classes \
             java/io/battlewithbytes/ucb/*.java
           cd build/classes
