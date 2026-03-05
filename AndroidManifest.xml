@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.battlewithbytes.ucb"
+    android:versionCode="1"
+    android:versionName="1.0">
+
+    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="30" />
+
+    <!-- Library-only APK: no activities, no services, no permissions needed.
+         Apps that use this library just include the classes directly.
+         The logcat reader works from any app process.
+         The gsensor (/dev/input/event2) is world-readable (666 perms). -->
+
+    <application android:label="UCB Library" />
+</manifest>
