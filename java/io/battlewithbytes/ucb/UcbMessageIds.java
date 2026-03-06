@@ -47,6 +47,7 @@ public final class UcbMessageIds {
     public static final int DEVICE_RESET        = 0x27;
     public static final int BLUETOOTH_CONTROL   = 0x28;
     public static final int WORKOUT_BLE_DATA    = 0x31;
+    public static final int SET_WORKOUT_STATE   = 0x3D;
 
     public static String nameOf(int id) {
         switch (id) {
@@ -91,6 +92,7 @@ public final class UcbMessageIds {
             case DEVICE_RESET:        return "DEVICE_RESET";
             case BLUETOOTH_CONTROL:   return "BLUETOOTH_CONTROL";
             case WORKOUT_BLE_DATA:    return "WORKOUT_BLE_DATA";
+            case SET_WORKOUT_STATE:   return "SET_WORKOUT_STATE";
             default:                  return "UNKNOWN_0x" + Integer.toHexString(id);
         }
     }

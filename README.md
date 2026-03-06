@@ -161,6 +161,7 @@ STX(0x02) + hex_ascii_encode(payload + CRC32_BE) + ETX(0x03)
 | 0x18 | SYSTEM_DATA | Bidirectional | Hardware identification |
 | 0x1F | SYSTEM_HEART_BEAT | Bidirectional | Keep-alive (every 3 seconds) |
 | 0x31 | WORKOUT_BLE_DATA | App -> UCB | JRNY workout telemetry (51 bytes) |
+| 0x3D | SET_WORKOUT_STATE | App -> UCB | Set workout state (1 byte: 0=stopped, 1=running, 2=paused) |
 
 ### UCB Firmware States
 
@@ -174,9 +175,9 @@ The heartbeat response includes the current firmware state:
 | 9 | WORKOUT | Active workout, streaming enabled |
 | 10 | SLEEP | Low power mode |
 
-Sensor streaming only produces data when the UCB is in WORKOUT state. The init sequence (SYSTEM_DATA requests) transitions the UCB from SELECTION to WORKOUT.
+Sensor streaming only produces data when the UCB is in WORKOUT state. The init sequence (SYSTEM_DATA requests x5, then STREAMING_CONTROL enable) transitions the UCB from SELECTION to WORKOUT. JRNY also sends SET_WORKOUT_STATE with payload 0x01 (NLS_WORKOUT_RUNNING) to explicitly transition, but the SYSTEM_DATA init sequence achieves the same result.
 
-See `UcbMessageIds.java` for the complete list of 35+ message types.
+See `UcbMessageIds.java` for the complete list of message types.
 
 ## Building
 
