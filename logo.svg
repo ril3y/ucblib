@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#1a1a2e" stroke="#00ff88" stroke-width="2"/>
+
+  <!-- Outer gear teeth (12 teeth) -->
+  <g fill="none" stroke="#00ff88" stroke-width="3">
+    <path d="M100 15 L96 30 L104 30 Z"/>
+    <path d="M143 22 L134 35 L141 39 Z"/>
+    <path d="M178 57 L165 66 L169 73 Z"/>
+    <path d="M185 100 L170 96 L170 104 Z"/>
+    <path d="M178 143 L165 134 L169 127 Z"/>
+    <path d="M143 178 L134 165 L141 161 Z"/>
+    <path d="M100 185 L96 170 L104 170 Z"/>
+    <path d="M57 178 L66 165 L59 161 Z"/>
+    <path d="M22 143 L35 134 L31 127 Z"/>
+    <path d="M15 100 L30 96 L30 104 Z"/>
+    <path d="M22 57 L35 66 L31 73 Z"/>
+    <path d="M57 22 L66 35 L59 39 Z"/>
+  </g>
+
+  <!-- Gear ring -->
+  <circle cx="100" cy="100" r="65" fill="none" stroke="#00ff88" stroke-width="3"/>
+  <circle cx="100" cy="100" r="55" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <!-- Center hub -->
+  <circle cx="100" cy="100" r="20" fill="#1a1a2e" stroke="#00ff88" stroke-width="2.5"/>
+  <circle cx="100" cy="100" r="8" fill="#00ff88"/>
+
+  <!-- Circuit traces from hub -->
+  <g stroke="#ffffff" stroke-width="1.5" fill="none" opacity="0.7">
+    <!-- Trace going right -->
+    <path d="M120 100 L140 100 L140 80 L155 80"/>
+    <circle cx="155" cy="80" r="3" fill="#ffffff"/>
+    <!-- Trace going up-right -->
+    <path d="M112 88 L130 70 L150 70"/>
+    <circle cx="150" cy="70" r="3" fill="#ffffff"/>
+    <!-- Trace going down -->
+    <path d="M100 120 L100 140 L120 140"/>
+    <circle cx="120" cy="140" r="3" fill="#ffffff"/>
+    <!-- Trace going left -->
+    <path d="M80 100 L60 100 L60 120 L45 120"/>
+    <circle cx="45" cy="120" r="3" fill="#ffffff"/>
+    <!-- Trace going up-left -->
+    <path d="M88 88 L70 70 L50 70"/>
+    <circle cx="50" cy="70" r="3" fill="#ffffff"/>
+    <!-- Trace going down-left -->
+    <path d="M88 112 L70 130 L50 130"/>
+    <circle cx="50" cy="130" r="3" fill="#ffffff"/>
+  </g>
+
+  <!-- Small data dots on gear ring -->
+  <circle cx="135" cy="42" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="158" cy="100" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="135" cy="158" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="65" cy="158" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="42" cy="100" r="2.5" fill="#00ff88" opacity="0.6"/>
+  <circle cx="65" cy="42" r="2.5" fill="#00ff88" opacity="0.6"/>
+</svg>

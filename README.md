@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.svg" alt="ucblib logo" width="120"/>
+</p>
+
 # ucblib -- Bowflex VeloCore Bike Data Library
 
 Java/Android library for reading real-time sensor data from Bowflex VeloCore C9/C10 exercise bikes. Provides full control of the UCB (Universal Control Board) serial protocol including sensor streaming, resistance control, and incline adjustment.
