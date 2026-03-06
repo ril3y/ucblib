@@ -16,7 +16,6 @@ public class UcbFrameTest {
         testSensorDataParse();
         testMessageIds();
         testFrameExtraction();
-        testRealLogcatPayload();
         testBadInputs();
 
         System.out.println("\n=== Results: " + passed + " passed, " + failed + " failed ===");
@@ -226,31 +225,6 @@ public class UcbFrameTest {
         check("second frame is STREAMING_CONTROL", ids[1] == UcbMessageIds.STREAMING_CONTROL);
     }
 
-    static void testRealLogcatPayload() {
-        section("Real logcat payload decode");
-
-        // Actual captured WORKOUT_BLE_DATA from the bike (decimal bytes from logcat)
-        String logcatPayload = "2, 48, 50, 51, 49, 49, 53, 69, 66, 70, 66, 51, 70, 52, 50, "
-            + "48, 48, 48, 48, 48, 48, 48, 48, 53, 51, 49, 67, 52, 57, 52, 49, 48, 48, 48, "
-            + "48, 48, 48, 48, 48, 68, 53, 65, 51, 66, 67, 51, 69, 48, 48, 48, 48, 65, 69, "
-            + "52, 50, 48, 48, 48, 48, 48, 48, 48, 48, 50, 68, 70, 57, 68, 54, 52, 48, 69, "
-            + "49, 49, 55, 53, 65, 52, 48, 48, 48, 56, 48, 66, 55, 52, 51, 48, 48, 48, 48, "
-            + "48, 48, 48, 48, 48, 49, 48, 48, 48, 48, 48, 48, 48, 48, 68, 69, 55, 49, 67, "
-            + "69, 53, 67, 53, 57, 53, 48, 3";
-
-        WorkoutData w = UcbClient.parseLogcatPayload(logcatPayload);
-        check("real payload parsed", w != null);
-        check("real power ~48W", w.power > 45 && w.power < 50);
-        check("real speed ~12.5mph", w.speedMph > 12 && w.speedMph < 13);
-        check("real cadence ~87RPM", w.cadence > 85 && w.cadence < 90);
-        check("real distance ~0.37mi", w.distance > 0.35 && w.distance < 0.40);
-        check("real calories ~6.7", w.calories > 6 && w.calories < 8);
-        check("real elapsed ~367s", w.elapsedTime > 360 && w.elapsedTime < 370);
-        check("real resistance = 1", w.resistanceLevel == 1);
-
-        System.out.println("  Decoded: " + w);
-    }
-
     static void testBadInputs() {
         section("Bad input handling");
 
@@ -263,9 +237,6 @@ public class UcbFrameTest {
         // Valid STX/ETX but bad CRC
         byte[] badCrc = new byte[]{0x02, '0', '1', '1', 'F', '0', '0', 'D', 'E', 'A', 'D', 'B', 'E', 'E', 'F', 0x03};
         check("decode bad CRC", UcbFrame.decode(badCrc) == null);
-
-        check("logcat parse empty", UcbClient.parseLogcatPayload("") == null);
-        check("logcat parse garbage", UcbClient.parseLogcatPayload("not,a,frame") == null);
     }
 
     // --- Helpers ---

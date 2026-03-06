@@ -19,15 +19,26 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * Also reads the lean sensor from /dev/input/event2.
  *
+ * Lifecycle:
+ *   connectAsync() — starts background thread, connects, begins streaming
+ *   pause()        — disconnects and frees TCP:9999 for other apps
+ *   resume()       — reconnects (call after pause)
+ *   disconnect()   — full shutdown
+ *
  * The serial bridge (TCP:9999) only sends data to one client at a time.
- * connectAsync() automatically force-stops JRNY before connecting so the
- * library becomes the sole client. When you disconnect(), JRNY can be
- * restarted normally.
+ * Apps should pause() when backgrounded and resume() when foregrounded
+ * so other apps can use the bike data.
  *
  * Usage:
  *   UcbDirectClient client = new UcbDirectClient();
  *   client.addListener(myListener);
- *   client.connectAsync(); // kills JRNY, connects, starts streaming
+ *   client.connectAsync();
+ *   // app backgrounded:
+ *   client.pause();
+ *   // app foregrounded:
+ *   client.resume();
+ *   // done:
+ *   client.disconnect();
  */
 public class UcbDirectClient {
     private static final String TAG = "UcbDirect";
@@ -36,11 +47,11 @@ public class UcbDirectClient {
     private static final int CONNECT_TIMEOUT_MS = 5000;
     private static final int HEARTBEAT_INTERVAL_MS = 3000;
     private static final int INIT_COUNT = 5;
-    private static final String JRNY_PACKAGE = "com.nautilus.bowflex.usb";
 
     private String host = DEFAULT_HOST;
     private int port = DEFAULT_PORT;
     private volatile boolean running;
+    private volatile boolean paused;
     private volatile boolean connected;
     private Thread clientThread;
     private Thread heartbeatThread;
@@ -94,31 +105,16 @@ public class UcbDirectClient {
     public float getLastLean() { return lastLean; }
     public int getFirmwareState() { return firmwareState; }
     public boolean isConnected() { return connected; }
+    public boolean isPaused() { return paused; }
     public LeanSensor getLeanSensor() { return leanSensor; }
 
     /**
-     * Force-stop JRNY so we can become the sole TCP:9999 client.
-     * Safe to call even if JRNY isn't running.
-     * The jailbreak app handles disabling AppMonitor separately.
+     * Connect and run in background thread. Returns immediately.
      */
-    public static void killJrny() {
-        try {
-            Runtime.getRuntime().exec(new String[]{
-                "am", "force-stop", JRNY_PACKAGE
-            }).waitFor();
-        } catch (Exception e) {
-            // Best effort — may fail if not running as shell/system
-        }
-    }
-
-    /** Connect and run in background thread. Returns immediately.
-     *  Automatically force-stops JRNY first to claim the serial bridge. */
     public void connectAsync() {
         if (running) return;
         running = true;
-
-        // Kill JRNY so we become the sole TCP:9999 client
-        killJrny();
+        paused = false;
 
         // Start lean sensor
         leanSensor.start(new LeanSensor.LeanListener() {
@@ -141,15 +137,54 @@ public class UcbDirectClient {
         clientThread.start();
     }
 
-    /** Disconnect and clean up. */
-    public void disconnect() {
-        running = false;
+    /**
+     * Pause — disconnect from TCP:9999 but keep the client alive.
+     * Call when app goes to background to free the serial bridge for other apps.
+     */
+    public void pause() {
+        if (!running || paused) return;
+        paused = true;
         leanSensor.stop();
         closeSocket();
-        if (heartbeatThread != null) {
-            heartbeatThread.interrupt();
-            heartbeatThread = null;
+        stopHeartbeat();
+        Log.d(TAG, "Paused — serial bridge released");
+        notifyConnection(false, "Paused");
+    }
+
+    /**
+     * Resume — reconnect to TCP:9999 after a pause.
+     * Call when app returns to foreground.
+     */
+    public void resume() {
+        if (!running || !paused) return;
+        paused = false;
+
+        // Restart lean sensor
+        leanSensor.start(new LeanSensor.LeanListener() {
+            @Override
+            public void onLean(int x, int y, int z, float leanDegrees) {
+                lastLean = leanDegrees;
+                for (Listener l : listeners) {
+                    try { l.onLeanUpdate(leanDegrees, x, y, z); }
+                    catch (Exception e) {}
+                }
+            }
+        });
+
+        // Wake up the client thread — it's sleeping in the reconnect loop
+        if (clientThread != null) {
+            clientThread.interrupt();
         }
+        Log.d(TAG, "Resumed — reconnecting to serial bridge");
+    }
+
+    /** Disconnect and clean up completely. */
+    public void disconnect() {
+        running = false;
+        paused = false;
+        leanSensor.stop();
+        closeSocket();
+        stopHeartbeat();
         if (clientThread != null) {
             clientThread.interrupt();
             clientThread = null;
@@ -203,11 +238,14 @@ public class UcbDirectClient {
 
     private void runClient() {
         while (running) {
-            try {
-                // Ensure JRNY isn't holding the connection before each attempt
-                killJrny();
-                Thread.sleep(500);
+            // If paused, sleep until resumed
+            while (paused && running) {
+                try { Thread.sleep(60000); }
+                catch (InterruptedException e) { /* resume() interrupts us */ }
+            }
+            if (!running) break;
 
+            try {
                 notifyConnection(false, "Connecting to " + host + ":" + port + "...");
                 socket = new Socket();
                 socket.setTcpNoDelay(true);
@@ -239,7 +277,7 @@ public class UcbDirectClient {
                 byte[] accumBuf = new byte[8192];
                 int accumLen = 0;
 
-                while (running && !socket.isClosed()) {
+                while (running && !paused && !socket.isClosed()) {
                     int n;
                     try {
                         n = in.read(buf);
@@ -250,7 +288,6 @@ public class UcbDirectClient {
 
                     // Append to accumulation buffer
                     if (accumLen + n > accumBuf.length) {
-                        // Overflow — reset
                         accumLen = 0;
                     }
                     System.arraycopy(buf, 0, accumBuf, accumLen, n);
@@ -275,15 +312,15 @@ public class UcbDirectClient {
                 notifyConnection(false, "Disconnected");
             }
 
-            // Reconnect after a pause
-            if (running) {
-                try { Thread.sleep(3000); } catch (InterruptedException e) { break; }
+            // Reconnect after a pause (unless paused or stopped)
+            if (running && !paused) {
+                try { Thread.sleep(3000); } catch (InterruptedException e) { /* resume or stop */ }
             }
         }
     }
 
     private int extractAndDispatch(byte[] buf, int offset, int length) {
-        final int[] totalConsumed = {0};
+        int totalConsumed = 0;
         int end = offset + length;
         int pos = offset;
 
@@ -293,8 +330,8 @@ public class UcbDirectClient {
             for (int i = pos; i < end; i++) {
                 if (buf[i] == UcbFrame.STX) { stx = i; break; }
             }
-            if (stx < 0) { totalConsumed[0] += (end - pos); break; }
-            totalConsumed[0] += (stx - pos);
+            if (stx < 0) { totalConsumed += (end - pos); break; }
+            totalConsumed += (stx - pos);
 
             // Find ETX
             int etx = -1;
@@ -308,10 +345,10 @@ public class UcbDirectClient {
             if (frame != null) {
                 dispatchFrame(frame);
             }
-            totalConsumed[0] += frameLen;
+            totalConsumed += frameLen;
             pos = etx + 1;
         }
-        return totalConsumed[0];
+        return totalConsumed;
     }
 
     private void dispatchFrame(UcbFrame frame) {
@@ -360,7 +397,7 @@ public class UcbDirectClient {
         heartbeatThread = new Thread(new Runnable() {
             public void run() {
                 try {
-                    while (running && connected) {
+                    while (running && connected && !paused) {
                         Thread.sleep(HEARTBEAT_INTERVAL_MS);
                         if (connected && out != null) {
                             sendCommand(UcbMessageIds.SYSTEM_HEART_BEAT, new byte[0]);
