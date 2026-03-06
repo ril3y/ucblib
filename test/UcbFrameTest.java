@@ -139,35 +139,48 @@ public class UcbFrameTest {
     static void testSensorDataParse() {
         section("SensorData parse");
 
-        // Build a 23-byte sensor notification
-        byte[] data = new byte[23];
-        // resistance = 27 (LE uint32)
-        data[0] = 27; data[1] = 0; data[2] = 0; data[3] = 0;
-        // rpm = 75
-        data[4] = 75; data[5] = 0; data[6] = 0; data[7] = 0;
-        // tilt = 512
-        data[8] = 0; data[9] = 2; data[10] = 0; data[11] = 0;
-        // power = 48.0W (float32 LE: 0x42400000)
-        data[12] = 0x00; data[13] = 0x00; data[14] = 0x40; data[15] = 0x42;
-        // crankRevCount = 1000
-        data[16] = (byte)0xE8; data[17] = 0x03; data[18] = 0; data[19] = 0;
-        // crankEventTime = 5000
-        data[20] = (byte)0x88; data[21] = 0x13;
-        // error = 0
-        data[22] = 0;
+        // Build a 23-byte sensor notification using REAL captured data from bike
+        // Raw hex: 00 00 00 01 00 00 00 48 00 00 07 3B C9 06 33 42 00 00 00 02 93 EB 00
+        // res=1 rpm=72 tilt=1851 power=44.8W crank=2/37867 err=0
+        byte[] data = new byte[] {
+            0x00, 0x00, 0x00, 0x01,                         // resistance=1 (BE uint32)
+            0x00, 0x00, 0x00, 0x48,                         // rpm=72 (BE uint32)
+            0x00, 0x00, 0x07, 0x3B,                         // tilt=1851 (BE uint32)
+            (byte)0xC9, 0x06, 0x33, 0x42,                   // power=44.8W (LE float32)
+            0x00, 0x00, 0x00, 0x02,                         // crankRevCount=2 (BE uint32)
+            (byte)0x93, (byte)0xEB,                         // crankEventTime=37867 (BE uint16)
+            0x00                                            // error=0
+        };
 
         SensorData s = SensorData.parse(data);
         check("sensor parse not null", s != null);
-        check("sensor resistance = 27", s.resistanceLevel == 27);
-        check("sensor rpm = 75", s.rpm == 75);
-        check("sensor tilt = 512", s.tilt == 512);
-        check("sensor power ~48W", Math.abs(s.power - 48.0f) < 0.01f);
-        check("sensor crankRev = 1000", s.crankRevCount == 1000);
-        check("sensor crankTime = 5000", s.crankEventTime == 5000);
+        check("sensor resistance = 1", s.resistanceLevel == 1);
+        check("sensor rpm = 72", s.rpm == 72);
+        check("sensor tilt = 1851", s.tilt == 1851);
+        check("sensor power ~44.8W", Math.abs(s.power - 44.8f) < 0.1f);
+        check("sensor crankRev = 2", s.crankRevCount == 2);
+        check("sensor crankTime = 37867", s.crankEventTime == 37867);
         check("sensor error = 0", s.error == 0);
-        check("sensor toString", s.toString().contains("res=27"));
+        check("sensor toString", s.toString().contains("res=1"));
 
         check("sensor null on short", SensorData.parse(new byte[5]) == null);
+
+        // Also test idle bike data: res=1, rpm=0, power=0W
+        // Raw: 00 00 00 01 00 00 00 00 00 00 07 EA 00 00 00 00 00 00 00 01 68 FA 00
+        byte[] idle = new byte[] {
+            0x00, 0x00, 0x00, 0x01,    // res=1
+            0x00, 0x00, 0x00, 0x00,    // rpm=0
+            0x00, 0x00, 0x07, (byte)0xEA, // tilt=2026
+            0x00, 0x00, 0x00, 0x00,    // power=0
+            0x00, 0x00, 0x00, 0x01,    // crankRev=1
+            0x68, (byte)0xFA,          // crankTime=26874
+            0x00                       // err=0
+        };
+        SensorData idle_s = SensorData.parse(idle);
+        check("idle resistance = 1", idle_s.resistanceLevel == 1);
+        check("idle rpm = 0", idle_s.rpm == 0);
+        check("idle tilt = 2026", idle_s.tilt == 2026);
+        check("idle power = 0", idle_s.power == 0f);
     }
 
     static void testMessageIds() {

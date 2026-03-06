@@ -22,14 +22,17 @@ public class SensorData {
     /** Parse from UCB frame data bytes. Returns null if data is too short. */
     public static SensorData parse(byte[] data) {
         if (data == null || data.length < SIZE) return null;
-        ByteBuffer bb = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
         SensorData s = new SensorData();
-        s.resistanceLevel = bb.getInt(0);
-        s.rpm             = bb.getInt(4);
-        s.tilt            = bb.getInt(8);
-        s.power           = bb.getFloat(12);
-        s.crankRevCount   = bb.getInt(16) & 0xFFFFFFFFL;
-        s.crankEventTime  = bb.getShort(20) & 0xFFFF;
+        // Integer fields are big-endian, power (float) is little-endian
+        ByteBuffer be = ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN);
+        s.resistanceLevel = be.getInt(0);
+        s.rpm             = be.getInt(4);
+        s.tilt            = be.getInt(8);
+        // Power is little-endian float32
+        ByteBuffer le = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
+        s.power           = le.getFloat(12);
+        s.crankRevCount   = be.getInt(16) & 0xFFFFFFFFL;
+        s.crankEventTime  = be.getShort(20) & 0xFFFF;
         s.error           = data[22] & 0xFF;
         return s;
     }
